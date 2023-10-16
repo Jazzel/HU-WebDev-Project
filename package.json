@@ -1,0 +1,25 @@
+{
+  "name": "backend",
+  "version": "1.0.0",
+  "main": "index.js",
+  "license": "MIT",
+  "author": "Muhammad Jazzel Mehmood",
+  "licenses": [
+    {
+      "type": "Apache License",
+      "url": "https://github.com/Jazzel/HU-WebnMobile-Project/blob/main/LICENSE"
+    }
+  ],
+  "repository": "https://github.com/Jazzel/HU-WebnMobile-Project",
+  "dependencies": {
+    "concurrently": "^8.2.1",
+    "express": "^4.18.2",
+    "nodemon": "^3.0.1"
+  },
+  "scripts": {
+    "server": "nodemon index.js",
+    "start": "node index.js",
+    "client": "cd client && yarn start",
+    "dev": "concurrently \"yarn server\" \"yarn client\""
+  }
+}
