@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const { check, validationResult } = require("express-validator");
 const Tournament = require("../models/Tournament");
+const Sport = require("../models/Sport");
 
 // @route    GET api/tournaments
 // @desc     Get all tournaments
@@ -10,7 +11,25 @@ const Tournament = require("../models/Tournament");
 router.get("/", async (req, res) => {
   try {
     const tournaments = await Tournament.find().sort({ date: -1 });
-    return res.json(tournaments);
+
+    let tournamentsData = [];
+    for (const tournament of tournaments) {
+      const sport = await Sport.findById(tournament.sport);
+
+      tournamentsData.push({
+        _id: tournament._id,
+        name: tournament.name,
+        sport: {
+          _id: sport._id,
+          name: sport.name,
+        },
+        start_date: tournament.start_date,
+        end_date: tournament.end_date,
+        description: tournament.description,
+      });
+    }
+
+    return res.json(tournamentsData);
   } catch (err) {
     console.error(err.message);
     return res.status(500).send("Server Error");
@@ -29,7 +48,6 @@ router.post(
     check("start_date", "Start Date is required").not().isEmpty(),
     check("end_date", "End Date is required").not().isEmpty(),
     check("description", "Description is required").not().isEmpty(),
-    check("managed_by", "Managed By is required").not().isEmpty(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -44,7 +62,6 @@ router.post(
         start_date: req.body.start_date,
         end_date: req.body.end_date,
         description: req.body.description,
-        managed_by: req.body.managed_by,
       });
 
       const tournament = await newTournament.save();
@@ -68,7 +85,21 @@ router.get("/:id", async (req, res) => {
     if (!tournament)
       return res.status(404).json({ msg: "Tournament not found" });
 
-    return res.json(tournament);
+    const sport = await Sport.findById(tournament.sport);
+
+    let tournamentData = {
+      _id: tournament._id,
+      name: tournament.name,
+      sport: {
+        _id: sport._id,
+        name: sport.name,
+      },
+      start_date: tournament.start_date,
+      end_date: tournament.end_date,
+      description: tournament.description,
+    };
+
+    return res.json(tournamentData);
   } catch (err) {
     console.error(err.message);
 
@@ -84,49 +115,47 @@ router.get("/:id", async (req, res) => {
 // @access   Private
 
 router.delete("/:id", async (req, res) => {
-    try {
-        const tournament = await Tournament.findById(req.params.id);
-    
-        if (!tournament)
-        return res.status(404).json({ msg: "Tournament not found" });
-    
-        await tournament.remove();
-    
-        return res.json({ msg: "Tournament removed" });
-    } catch (err) {
-      console.error(err.message);
-      if (err.kind === "ObjectId")
-        return res.status(404).json({ msg: "Tournament not found" });
-      return res.status(500).send("Server Error");
-    }
-    });
+  try {
+    const tournament = await Tournament.findById(req.params.id);
+
+    if (!tournament)
+      return res.status(404).json({ msg: "Tournament not found" });
+
+    await tournament.deleteOne();
+
+    return res.json({ msg: "Tournament removed" });
+  } catch (err) {
+    console.error(err.message);
+    if (err.kind === "ObjectId")
+      return res.status(404).json({ msg: "Tournament not found" });
+    return res.status(500).send("Server Error");
+  }
+});
 
 // @route    PUT api/tournaments/:id
 // @desc     Update a tournament
 // @access   Private
 
-
 router.put("/:id", async (req, res) => {
-    try {
-        const tournament = await Tournament.findById(req.params.id);
-    
-        if (!tournament)
-        return res.status(404).json({ msg: "Tournament not found" });
-    
-        tournament.name = req.body.name ?? tournament.name;
-        tournament.sport = req.body.sport ?? tournament.sport;
-        tournament.start_date = req.body.start_date ?? tournament.start_date;
-        tournament.end_date = req.body.end_date ?? tournament.end_date;
-        tournament.description = req.body.description ?? tournament.description;
-        tournament.managed_by = req.body.managed_by ?? tournament.managed_by;
-    
-        await tournament.save();
-    
-        return res.json(tournament);
-    } catch (err) {
-        console.error(err.message);
-        return res.status(500).send("Server Error");
-    }
-    });
+  try {
+    const tournament = await Tournament.findById(req.params.id);
 
-module.exports = router;    
+    if (!tournament)
+      return res.status(404).json({ msg: "Tournament not found" });
+
+    tournament.name = req.body.name ?? tournament.name;
+    tournament.sport = req.body.sport ?? tournament.sport;
+    tournament.start_date = req.body.start_date ?? tournament.start_date;
+    tournament.end_date = req.body.end_date ?? tournament.end_date;
+    tournament.description = req.body.description ?? tournament.description;
+
+    await tournament.save();
+
+    return res.json(tournament);
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).send("Server Error");
+  }
+});
+
+module.exports = router;

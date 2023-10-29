@@ -2,6 +2,8 @@ const express = require("express");
 const router = express.Router();
 const { check, validationResult } = require("express-validator");
 const Player = require("../models/Player");
+const Team = require("../models/Team");
+const City = require("../models/City");
 
 // @route    GET api/Player
 // @desc     Get all Player
@@ -9,8 +11,31 @@ const Player = require("../models/Player");
 
 router.get("/", async (req, res) => {
   try {
-    const Player = await Player.find().sort({ date: -1 });
-    return res.json(Player);
+    const players = await Player.find().sort({ date: -1 });
+
+    let playersData = [];
+    for (const player of players) {
+      const team = await Team.findById(player.team);
+      const city = await City.findById(player.city);
+
+      playersData.push({
+        _id: player._id,
+        first_name: player.first_name,
+        last_name: player.last_name,
+        team: {
+          _id: team._id,
+          name: team.name,
+        },
+        age: player.age,
+        city: {
+          _id: city._id,
+          name: city.name,
+        },
+        description: player.description,
+      });
+    }
+
+    return res.json(playersData);
   } catch (err) {
     console.error(err.message);
     return res.status(500).send("Server Error");
@@ -66,8 +91,26 @@ router.get("/:id", async (req, res) => {
     const player = await Player.findById(req.params.id);
 
     if (!player) return res.status(404).json({ msg: "Player not found" });
+    const team = await Team.findById(player.team);
+    const city = await City.findById(player.city);
 
-    return res.json(player);
+    let playerData = {
+      _id: player._id,
+      first_name: player.first_name,
+      last_name: player.last_name,
+      team: {
+        _id: team._id,
+        name: team.name,
+      },
+      age: player.age,
+      city: {
+        _id: city._id,
+        name: city.name,
+      },
+      description: player.description,
+    };
+
+    return res.json(playerData);
   } catch (err) {
     console.error(err.message);
 

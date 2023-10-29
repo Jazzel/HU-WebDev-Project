@@ -1,3 +1,7 @@
 {
-  "mongoURI": "mongodb+srv://jazzelmehmood4:ZAAyyMLlU6qxpJxe@cluster0.ukwbphn.mongodb.net/"
+  "mongoURI": "mongodb+srv://jazzelmehmood4:ZAAyyMLlU6qxpJxe@cluster0.ukwbphn.mongodb.net/",
+  "JWTsecretToken": "I'M BATMAN",
+  "user": "jazzelmehmood2@gmail.com",
+  "pass": "ezqq zmbh aubv idpr",
+  "secret": "BATMAN"
 }

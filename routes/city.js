@@ -2,15 +2,30 @@ const express = require("express");
 const router = express.Router();
 const { check, validationResult } = require("express-validator");
 const City = require("../models/City");
-
+const Country = require("../models/Country");
 
 // @route    GET api/City
 // @desc     Get all City
 // @access   Public
 router.get("/", async (req, res) => {
   try {
-    const city = await City.find().sort({ date: -1 });
-    return res.json(city);
+    const cities = await City.find().sort({ date: -1 });
+
+    let citiesData = [];
+    for (const city of cities) {
+      const country = await Country.findById(city.country);
+
+      citiesData.push({
+        _id: city._id,
+        name: city.name,
+        country: {
+          _id: country._id,
+          name: country.name,
+        },
+      });
+    }
+
+    return res.json(citiesData);
   } catch (err) {
     console.error(err.message);
     return res.status(500).send("Server Error");
@@ -24,6 +39,7 @@ router.post(
   "/",
   [
     check("name", "Name is required").not().isEmpty(),
+    check("country", "Country is required").not().isEmpty(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -34,6 +50,7 @@ router.post(
     try {
       const newCity = new City({
         name: req.body.name,
+        country: req.body.country,
       });
 
       const city = await newCity.save();
@@ -55,7 +72,18 @@ router.get("/:id", async (req, res) => {
 
     if (!city) return res.status(404).json({ msg: "City not found" });
 
-    return res.json(city);
+    const country = await Country.findById(city.country);
+
+    let cityData = {
+      _id: city._id,
+      name: city.name,
+      country: {
+        _id: country._id,
+        name: country.name,
+      },
+    };
+
+    return res.json(cityData);
   } catch (err) {
     console.error(err.message);
     if (err.kind === "ObjectId")
@@ -77,14 +105,12 @@ router.delete("/:id", async (req, res) => {
     return res.json({ msg: "City removed" });
   } catch (err) {
     console.error(err.message);
-    
+
     if (err.kind === "ObjectId")
       return res.status(404).json({ msg: "City not found" });
     return res.status(500).send("Server Error");
   }
 });
-
- 
 
 // @route    PUT api/city/:id
 // @desc     Update a city
@@ -97,6 +123,7 @@ router.put("/:id", async (req, res) => {
     if (!city) return res.status(404).json({ msg: "City not found" });
 
     city.name = req.body.name ?? city.name;
+    city.country = req.body.country ?? city.country;
 
     await city.save();
 
