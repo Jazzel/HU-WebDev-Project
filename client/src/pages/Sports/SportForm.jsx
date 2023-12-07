@@ -4,20 +4,29 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import axios from "../../axios";
+import { addSport, updateSport, getSport } from "../../actions/sports";
+import { connect } from "react-redux";
 
-const SportForm = () => {
+import { setAlert } from "../../actions/alert";
+import PropTypes from "prop-types";
+
+const SportForm = ({ addSport, updateSport, getSport, setAlert }) => {
   const { id, viewOnly } = useParams();
 
   const getData = async () => {
-    if (id) {
-      const response = await axios.get(`/sports/${id}`);
-      setFormData({ ...response.data });
+    try {
+      if (id) {
+        const response = await getSport(id);
+        setFormData({ ...response.data });
+      }
+    } catch (err) {
+      alert(err);
     }
   };
 
   useEffect(() => {
     getData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const navigate = useNavigate();
@@ -32,15 +41,12 @@ const SportForm = () => {
 
     let response;
     if (!id) {
-      response = await axios.post(`/sports`, formData);
+      response = await addSport(formData);
     } else {
-      response = await axios.put(`/sports/${formData._id}`, formData);
+      response = await updateSport(formData.id, formData);
     }
     if (response.status === 200) {
-      alert(id ? "Sport updated !" : "Sport added !");
       navigate("/sports");
-    } else {
-      alert("Something went wrong !");
     }
   };
 
@@ -54,7 +60,7 @@ const SportForm = () => {
           <h1>Sports | {!id ? "Add" : viewOnly ? "Details" : "Edit"}</h1>
         </div>
         <div className="col-3 d-flex justify-content-end align-items-center">
-          <Link to="/sports" className="btn btn-outline-dark mr-0">
+          <Link to="/sports" className="btn btn-outline-light mr-0">
             <FontAwesomeIcon icon={faChevronLeft} /> Go Back
           </Link>
         </div>
@@ -97,4 +103,20 @@ const SportForm = () => {
   );
 };
 
-export default SportForm;
+SportForm.propTypes = {
+  addSport: PropTypes.func.isRequired,
+  updateSport: PropTypes.func.isRequired,
+  getSport: PropTypes.func.isRequired,
+  setAlert: PropTypes.func.isRequired,
+};
+
+const mapStateToProps = (state) => ({
+  sport: state.sport,
+});
+
+export default connect(mapStateToProps, {
+  addSport,
+  updateSport,
+  getSport,
+  setAlert,
+})(SportForm);

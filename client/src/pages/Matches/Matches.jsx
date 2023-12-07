@@ -10,12 +10,39 @@ import { Link } from "react-router-dom";
 const Matches = () => {
   const [matches, setMatches] = useState([]);
   const getData = async () => {
-    const response = await axios.get(`/matches`);
-    setMatches(response.data);
+    try {
+      const response = await axios.get(`/matches`);
+      setMatches(response.data);
+    } catch (error) {
+      console.log(error);
+    }
   };
   useEffect(() => {
     getData();
   }, []);
+
+  const [filter, setFilter] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filteredData, setFilteredData] = useState([]);
+
+  const onChange = (e) => {
+    setSearch(e.target.value);
+    if (e.target.value !== "") {
+      setFilter(true);
+      const filteredData = matches.filter(
+        (data) =>
+          data?.name.toLowerCase().includes(e.target.value.toLowerCase()) ||
+          data?.venue.toLowerCase().includes(e.target.value.toLowerCase()) ||
+          data?.tournament
+            .toLowerCase()
+            .includes(e.target.value.toLowerCase()) ||
+          data?.winner.toLowerCase().includes(e.target.value.toLowerCase())
+      );
+      setFilteredData(filteredData);
+    } else {
+      setFilter(false);
+    }
+  };
 
   const handleDelete = async (id) => {
     console.log(id);
@@ -24,7 +51,7 @@ const Matches = () => {
       const response = await axios.delete(`/matches/${id}`);
 
       if (response.status === 200) {
-        alert("Sport Deleted !");
+        alert("Match Deleted !");
         getData();
       }
     }
@@ -46,12 +73,20 @@ const Matches = () => {
         </div>
         <hr />
       </div>
+      <div className="d-flex justify-content-end mx-2 mb-3">
+        <input
+          className="form-control w-50"
+          placeholder="Search"
+          value={search}
+          onChange={(e) => onChange(e)}
+        />
+      </div>
       <table className="table  table-responsive table-striped dataTables">
         <thead className="table-dark ">
           <tr>
             <th>Id</th>
             <th>Name</th>
-            <th>Timestamp</th>
+            <th>Date</th>
             <th>Venue</th>
             <th>Tournament</th>
             <th>Winner</th>
@@ -59,33 +94,73 @@ const Matches = () => {
           </tr>
         </thead>
         <tbody>
-          {matches.length > 0 &&
-            matches.map((match, index) => (
-              <tr key={match._id}>
-                <td>{index + 1}</td>
-                <td>{match.name}</td>
-                <td>{fixDate(match.timestamp)}</td>
-                <td>{match.venue}</td>
-                <td>{match.tournament}</td>
-                <td>{match.winner?.name}</td>
-                <td>
-                  <button className="btn btn-dark btn-sm">View</button> |{" "}
-                  <Link
-                    to={`/matches/edit/${match._id}`}
-                    className="btn btn-warning btn-sm"
-                  >
-                    Edit
-                  </Link>{" "}
-                  |{" "}
-                  <button
-                    onClick={() => handleDelete(match._id)}
-                    className="btn btn-danger btn-sm"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
+          {!filter
+            ? matches.length > 0 &&
+              matches.map((match, index) => (
+                <tr key={match.id}>
+                  <td>{index + 1}</td>
+                  <td>{match.name}</td>
+                  <td>{fixDate(match.date)}</td>
+                  <td>{match.venue}</td>
+                  <td>{match.tournament}</td>
+                  <td>{match.winner}</td>
+                  <td>
+                    <Link
+                      to={`/matches/${match.id}/true`}
+                      className="btn btn-dark btn-sm"
+                    >
+                      View
+                    </Link>{" "}
+                    |{" "}
+                    <Link
+                      to={`/matches/edit/${match.id}`}
+                      className="btn btn-warning btn-sm"
+                    >
+                      Edit
+                    </Link>{" "}
+                    |{" "}
+                    <button
+                      onClick={() => handleDelete(match.id)}
+                      className="btn btn-danger btn-sm"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))
+            : filteredData.length > 0 &&
+              filteredData.map((match, index) => (
+                <tr key={match.id}>
+                  <td>{index + 1}</td>
+                  <td>{match.name}</td>
+                  <td>{fixDate(match.date)}</td>
+                  <td>{match.venue}</td>
+                  <td>{match.tournament}</td>
+                  <td>{match.winner}</td>
+                  <td>
+                    <Link
+                      to={`/matches/${match.id}/true`}
+                      className="btn btn-dark btn-sm"
+                    >
+                      View
+                    </Link>{" "}
+                    |{" "}
+                    <Link
+                      to={`/matches/edit/${match.id}`}
+                      className="btn btn-warning btn-sm"
+                    >
+                      Edit
+                    </Link>{" "}
+                    |{" "}
+                    <button
+                      onClick={() => handleDelete(match.id)}
+                      className="btn btn-danger btn-sm"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
         </tbody>
       </table>
     </Layout>

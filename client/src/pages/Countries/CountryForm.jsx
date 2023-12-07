@@ -10,14 +10,19 @@ const CountryForm = () => {
   const { id, viewOnly } = useParams();
 
   const getData = async () => {
-    if (id) {
-      const response = await axios.get(`/countries/${id}`);
-      setFormData(response.data);
+    try {
+      if (id) {
+        const response = await axios.get(`/countries/${id}`);
+        setFormData(response.data);
+      }
+    } catch (error) {
+      console.log(error);
     }
   };
 
   useEffect(() => {
     getData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const navigate = useNavigate();
@@ -29,17 +34,21 @@ const CountryForm = () => {
   const onSubmit = async (e) => {
     e.preventDefault();
 
-    let response;
-    if (!id) {
-      response = await axios.post(`/countries`, formData);
-    } else {
-      response = await axios.put(`/countries/${formData._id}`, formData);
-    }
-    if (response.status === 200) {
-      alert(id ? "Country updated !" : "Country added !");
-      navigate("/countries");
-    } else {
-      alert("Something went wrong !");
+    try {
+      let response;
+      if (!id) {
+        response = await axios.post(`/countries`, formData);
+      } else {
+        response = await axios.put(`/countries/${formData.id}`, formData);
+      }
+      if (response.status === 200) {
+        alert(id ? "Country updated !" : "Country added !");
+        navigate("/countries");
+      } else {
+        alert("Something went wrong !");
+      }
+    } catch (error) {
+      console.log(error);
     }
   };
 

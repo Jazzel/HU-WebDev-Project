@@ -3,30 +3,61 @@ import Layout from "../../components/Layout";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faAdd } from "@fortawesome/free-solid-svg-icons";
-import axios from "../../axios";
 import { fixDate } from "../../App";
 import { Link } from "react-router-dom";
+import { getTournaments, deleteTournament } from "../../actions/tournaments";
+import { setAlert } from "../../actions/alert";
+import PropTypes from "prop-types";
+import { connect } from "react-redux";
 
-const Tournaments = () => {
-  const [tournaments, getTournaments] = useState([]);
+const Tournaments = ({ getTournaments, deleteTournament, setAlert }) => {
+  const [tournamentsData, setTournamentsData] = useState([]);
+
   const getData = async () => {
-    const response = await axios.get(`/tournaments`);
-    getTournaments(response.data);
+    try {
+      const response = await getTournaments();
+      setTournamentsData(response.data);
+    } catch (error) {
+      console.log(error);
+    }
   };
   useEffect(() => {
     getData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const handleDelete = async (id) => {
-    console.log(id);
-    const answer = window.confirm("Are you sure you want to delete ? ");
-    if (answer) {
-      const response = await axios.delete(`/tournaments/${id}`);
+  const [filter, setFilter] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filteredData, setFilteredData] = useState([]);
 
-      if (response.status === 200) {
-        alert("Tournament Deleted !");
-        getData();
+  const onChange = (e) => {
+    setSearch(e.target.value);
+    if (e.target.value !== "") {
+      setFilter(true);
+      const filteredData = tournamentsData.filter(
+        (match) =>
+          match?.name.toLowerCase().includes(e.target.value.toLowerCase()) ||
+          match?.sport.toLowerCase().includes(e.target.value.toLowerCase())
+      );
+      setFilteredData(filteredData);
+    } else {
+      setFilter(false);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    try {
+      const answer = window.confirm("Are you sure you want to delete ? ");
+      if (answer) {
+        const response = await deleteTournament(id);
+
+        if (response.status === 200) {
+          getData();
+        }
       }
+    } catch (error) {
+      const errors = error.response.data;
+      setAlert(errors.msg, "danger");
     }
   };
   return (
@@ -46,6 +77,14 @@ const Tournaments = () => {
         </div>
         <hr />
       </div>
+      <div className="d-flex justify-content-end mx-2 mb-3">
+        <input
+          className="form-control w-50"
+          placeholder="Search"
+          value={search}
+          onChange={(e) => onChange(e)}
+        />
+      </div>
       <table className="table  table-responsive table-striped dataTables">
         <thead className="table-dark ">
           <tr>
@@ -58,38 +97,94 @@ const Tournaments = () => {
           </tr>
         </thead>
         <tbody>
-          {tournaments.length > 0 &&
-            tournaments.map((tournament, index) => {
-              return (
-                <tr key={tournament._id}>
-                  <td>{index + 1}</td>
-                  <td>{tournament.name}</td>
-                  <td>{tournament.sport.name}</td>
-                  <td>{fixDate(tournament.start_date)}</td>
-                  <td>{fixDate(tournament.end_date)}</td>
-                  <td>
-                    <button className="btn btn-dark btn-sm">View</button> |{" "}
-                    <Link
-                      to={`/tournaments/edit/${tournament._id}`}
-                      className="btn btn-warning btn-sm"
-                    >
-                      Edit
-                    </Link>{" "}
-                    |{" "}
-                    <button
-                      onClick={() => handleDelete(tournament._id)}
-                      className="btn btn-danger btn-sm"
-                    >
-                      Delete
-                    </button>
-                  </td>
-                </tr>
-              );
-            })}
+          {!filter
+            ? tournamentsData &&
+              tournamentsData.length > 0 &&
+              tournamentsData.map((tournament, index) => {
+                return (
+                  <tr key={tournament.id}>
+                    <td>{index + 1}</td>
+                    <td>{tournament.name}</td>
+                    <td>{tournament.sport}</td>
+                    <td>{fixDate(tournament.start_date)}</td>
+                    <td>{fixDate(tournament.end_date)}</td>
+                    <td>
+                      <Link
+                        to={`/tournaments/${tournament.id}/true`}
+                        className="btn btn-dark btn-sm"
+                      >
+                        View
+                      </Link>{" "}
+                      |{" "}
+                      <Link
+                        to={`/tournaments/edit/${tournament.id}`}
+                        className="btn btn-warning btn-sm"
+                      >
+                        Edit
+                      </Link>{" "}
+                      |{" "}
+                      <button
+                        onClick={() => handleDelete(tournament.id)}
+                        className="btn btn-danger btn-sm"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })
+            : filteredData.length > 0 &&
+              filteredData.map((tournament, index) => {
+                return (
+                  <tr key={tournament.id}>
+                    <td>{index + 1}</td>
+                    <td>{tournament.name}</td>
+                    <td>{tournament.sport}</td>
+                    <td>{fixDate(tournament.start_date)}</td>
+                    <td>{fixDate(tournament.end_date)}</td>
+                    <td>
+                      <Link
+                        to={`/tournaments/${tournament.id}/true`}
+                        className="btn btn-dark btn-sm"
+                      >
+                        View
+                      </Link>{" "}
+                      |{" "}
+                      <Link
+                        to={`/tournaments/edit/${tournament.id}`}
+                        className="btn btn-warning btn-sm"
+                      >
+                        Edit
+                      </Link>{" "}
+                      |{" "}
+                      <button
+                        onClick={() => handleDelete(tournament.id)}
+                        className="btn btn-danger btn-sm"
+                      >
+                        Delete
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
         </tbody>
       </table>
     </Layout>
   );
 };
 
-export default Tournaments;
+Tournaments.propTypes = {
+  deleteSport: PropTypes.func.isRequired,
+  setAlert: PropTypes.func.isRequired,
+  deleteTournament: PropTypes.func.isRequired,
+};
+
+const mapStateToProps = (state) => ({
+  tournaments: state.tournaments,
+});
+
+export default connect(mapStateToProps, {
+  getTournaments,
+  deleteTournament,
+  setAlert,
+})(Tournaments);

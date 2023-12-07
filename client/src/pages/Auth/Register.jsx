@@ -1,8 +1,14 @@
 import React, { useState } from "react";
-import axios from "../../axios";
 import { Link, useNavigate } from "react-router-dom";
 
-const Register = () => {
+import image from "../../assets/img/tom-briskey-HM3WZ4B1gvM-unsplash.jpg";
+import { connect } from "react-redux";
+import PropTypes from "prop-types";
+import { register } from "../../actions/auth";
+import { setAlert } from "../../actions/alert";
+import Alert from "../../components/Alert";
+
+const Register = ({ register, setAlert }) => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -14,22 +20,10 @@ const Register = () => {
 
   const onSubmit = async (e) => {
     e.preventDefault();
-
-    const response = await axios.post("/users/", formData);
+    const response = register(formData);
 
     if (response.status === 200) {
-      alert("User registered !");
-
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          name: formData.name,
-          email: formData.email,
-          role: formData.role,
-          token: response.data.token,
-          isAuthenticated: true,
-        })
-      );
+      setAlert("User registered !", "success");
 
       navigate("/dashboard");
     } else {
@@ -42,7 +36,14 @@ const Register = () => {
 
   return (
     <div className="row" style={{ height: "100vh", overflow: "hidden" }}>
-      <div className="col-12 col-md-6 bg-dark"></div>
+      <div
+        className="col-12 col-md-6"
+        style={{
+          background: `url(${image})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      ></div>
       <div
         className="col-12 col-md-6 d-flex justify-content-center align-items-center"
         style={{ flexDirection: "column" }}
@@ -52,6 +53,8 @@ const Register = () => {
         <h4>Register</h4>
 
         <form className="p-5 w-75" onSubmit={(e) => onSubmit(e)}>
+          <Alert />
+
           <div className="mb-3">
             <label className="form-label">Name</label>
             <input
@@ -121,4 +124,14 @@ const Register = () => {
   );
 };
 
-export default Register;
+Register.propTypes = {
+  register: PropTypes.func.isRequired,
+  isAuthenticated: PropTypes.bool,
+  setAlert: PropTypes.func.isRequired,
+};
+
+const mapStateToProps = (state) => ({
+  isAuthenticated: state.auth.isAuthenticated,
+});
+
+export default connect(mapStateToProps, { register, setAlert })(Register);

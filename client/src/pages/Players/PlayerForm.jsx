@@ -13,22 +13,28 @@ const PlayerForm = () => {
   const [teams, setTeams] = useState([]);
 
   const getData = async () => {
-    const responseCity = await axios.get(`/cities/`);
-    const responseTeams = await axios.get(`/teams/`);
-    if (id) {
-      const response = await axios.get(`/players/${id}`);
-      setFormData({
-        ...response.data,
-        city: response.data.city._id,
-        team: response.data.team._id,
-      });
+    try {
+      const responseCity = await axios.get(`/cities/`);
+      const responseTeams = await axios.get(`/teams/`);
+      if (id) {
+        console.log(id);
+        const response = await axios.get(`/players/${id}`);
+        setFormData({
+          ...response.data,
+          city: response.data.city,
+          team: response.data.team,
+        });
+      }
+      setCities(responseCity.data);
+      setTeams(responseTeams.data);
+    } catch (error) {
+      console.log(error);
     }
-    setCities(responseCity.data);
-    setTeams(responseTeams.data);
   };
 
   useEffect(() => {
     getData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const navigate = useNavigate();
@@ -49,7 +55,7 @@ const PlayerForm = () => {
     if (!id) {
       response = await axios.post(`/players`, formData);
     } else {
-      response = await axios.put(`/players/${formData._id}`, formData);
+      response = await axios.put(`/players/${formData.id}`, formData);
     }
     if (response.status === 200) {
       alert(id ? "Player updated !" : "Player added !");
@@ -69,7 +75,7 @@ const PlayerForm = () => {
           <h1>Players | {!id ? "Add" : viewOnly ? "Details" : "Edit"}</h1>
         </div>
         <div className="col-3 d-flex justify-content-end align-items-center">
-          <Link to="/players" className="btn btn-outline-dark mr-0">
+          <Link to="/players" className="btn btn-outline-light mr-0">
             <FontAwesomeIcon icon={faChevronLeft} /> Go Back
           </Link>
         </div>
@@ -114,7 +120,11 @@ const PlayerForm = () => {
           >
             <option value={""}>Select team</option>
             {teams.map((team) => (
-              <option key={team._id} value={team._id}>
+              <option
+                selected={formData.team === team.id}
+                key={team.id}
+                value={team.id}
+              >
                 {team.name}
               </option>
             ))}
@@ -145,7 +155,11 @@ const PlayerForm = () => {
           >
             <option value={""}>Select city</option>
             {cities.map((city) => (
-              <option key={city._id} value={city._id}>
+              <option
+                selected={formData.city === city.id}
+                key={city.id}
+                value={city.id}
+              >
                 {city.name}
               </option>
             ))}

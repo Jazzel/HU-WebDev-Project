@@ -1,0 +1,30 @@
+export const SET_ALERT = "SET_ALERT";
+export const REMOVE_ALERT = "REMOVE_ALERT";
+export const REGISTER_SUCCESS = "REGISTER_SUCCESS";
+export const REGISTER_FAIL = "REGISTER_FAIL";
+export const USER_LOADED = "USER_LOADED";
+export const AUTH_ERROR = "AUTH_ERROR";
+export const LOGIN_SUCCESS = "LOGIN_SUCCESS";
+export const LOGIN_FAIL = "LOGIN_FAIL";
+export const LOGOUT = "LOGOUT";
+export const GET_PROFILE = "GET_PROFILE";
+export const GET_PROFILES = "GET_PROFILES";
+export const CLEAR_PROFILE = "CLEAR_PROFILE";
+export const PROFILE_ERROR = "PROFILE_ERROR";
+export const CREATE_PROFILE = "CREATE_PROFILE";
+export const UPDATE_PROFILE = "UPDATE_PROFILE";
+export const ACCOUNT_DELETED = "ACCOUNT_DELETED";
+
+export const GET_SPORTS = "GET_SPORTS";
+export const GET_SPORT = "GET_SPORT";
+export const DELETE_SPORT = "DELETE_SPORT";
+export const ADD_SPORT = "ADD_SPORT";
+export const UPDATE_SPORT = "UPDATE_SPORT";
+export const SPORT_ERROR = "SPORT_ERROR";
+
+export const GET_TOURNAMENTS = "GET_TOURNAMENTS";
+export const GET_TOURNAMENT = "GET_TOURNAMENT";
+export const DELETE_TOURNAMENT = "DELETE_TOURNAMENT";
+export const ADD_TOURNAMENT = "ADD_TOURNAMENT";
+export const UPDATE_TOURNAMENT = "UPDATE_TOURNAMENT";
+export const TOURNAMENT_ERROR = "TOURNAMENT_ERROR";

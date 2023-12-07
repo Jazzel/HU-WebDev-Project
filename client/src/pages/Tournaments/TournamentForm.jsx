@@ -4,24 +4,45 @@ import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
 import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
-import axios from "../../axios";
 import { fixDataForInputField } from "../../App";
 
-const TournamentForm = () => {
+import {
+  getTournament,
+  addTournament,
+  updateTournament,
+} from "../../actions/tournaments";
+import { getSports } from "../../actions/sports";
+import { connect } from "react-redux";
+
+import { setAlert } from "../../actions/alert";
+import PropTypes from "prop-types";
+
+const TournamentForm = ({
+  getSports,
+  getTournament,
+  addTournament,
+  updateTournament,
+  setAlert,
+}) => {
   const { id, viewOnly } = useParams();
-  const [sports, setSports] = useState([]);
+  const [sportsData, setSportsData] = useState([]);
 
   const getData = async () => {
-    const responseSports = await axios.get(`/sports`);
-    if (id) {
-      const response = await axios.get(`/tournaments/${id}`);
-      setFormData({ ...response.data, sport: response.data.sport._id });
+    try {
+      const responseSports = await getSports();
+      if (id) {
+        const response = await getTournament(id);
+        setFormData({ ...response.data, sport: response.data.sport });
+      }
+      setSportsData(responseSports.data);
+    } catch (error) {
+      console.log(error);
     }
-    setSports(responseSports.data);
   };
 
   useEffect(() => {
     getData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const navigate = useNavigate();
@@ -32,22 +53,27 @@ const TournamentForm = () => {
     start_date: "",
     end_date: "",
     description: "",
+    managed_by: 1,
   });
 
   const onSubmit = async (e) => {
     e.preventDefault();
 
-    let response;
-    if (!id) {
-      response = await axios.post(`/tournaments`, formData);
+    if (formData.end_date > formData.start_date) {
+      let response;
+      if (!id) {
+        response = await addTournament(formData);
+      } else {
+        response = await updateTournament(formData.id, formData);
+      }
+      if (response.status === 200) {
+        navigate("/tournaments");
+      }
     } else {
-      response = await axios.put(`/tournaments/${formData._id}`, formData);
-    }
-    if (response.status === 200) {
-      alert(id ? "Tournament updated !" : "Tournament added !");
-      navigate("/tournaments");
-    } else {
-      alert("Something went wrong !");
+      setAlert(
+        "Dates should not be the same or End date cannot be less than start date",
+        "danger"
+      );
     }
   };
 
@@ -61,7 +87,7 @@ const TournamentForm = () => {
           <h1>Tournaments | {!id ? "Add" : viewOnly ? "Details" : "Edit"}</h1>
         </div>
         <div className="col-3 d-flex justify-content-end align-items-center">
-          <Link to="/tournaments" className="btn btn-outline-dark mr-0">
+          <Link to="/tournaments" className="btn btn-outline-light mr-0">
             <FontAwesomeIcon icon={faChevronLeft} /> Go Back
           </Link>
         </div>
@@ -90,9 +116,13 @@ const TournamentForm = () => {
             value={formData.sport}
             onChange={(e) => onChange(e)}
           >
-            <option value={""}>Select Country</option>
-            {sports.map((sport) => (
-              <option key={sport._id} value={sport._id}>
+            <option value={""}>Select sport</option>
+            {sportsData.map((sport) => (
+              <option
+                selected={formData.sport === sport.id}
+                key={sport.id}
+                value={sport.id}
+              >
                 {sport.name}
               </option>
             ))}
@@ -147,4 +177,22 @@ const TournamentForm = () => {
   );
 };
 
-export default TournamentForm;
+TournamentForm.propTypes = {
+  setAlert: PropTypes.func.isRequired,
+  getTournament: PropTypes.func.isRequired,
+  getSports: PropTypes.func.isRequired,
+  addTournament: PropTypes.func.isRequired,
+  updateTournament: PropTypes.func.isRequired,
+};
+
+const mapStateToProps = (state) => ({
+  tournament: state.tournament,
+});
+
+export default connect(mapStateToProps, {
+  setAlert,
+  getTournament,
+  getSports,
+  addTournament,
+  updateTournament,
+})(TournamentForm);

@@ -1,93 +1,110 @@
 import React from "react";
-import {
-  CDBSidebar,
-  CDBSidebarContent,
-  CDBSidebarFooter,
-  CDBSidebarHeader,
-  CDBSidebarMenu,
-  CDBSidebarMenuItem,
-} from "cdbreact";
-import { Link, NavLink } from "react-router-dom";
+import { Link } from "react-router-dom";
 
 const Sidebar = ({ activeLink }) => {
   return (
-    <div
-      style={{
-        height: "100vh",
-        overflow: "scroll initial",
-        maxWidth: "280px",
-        float: "left",
-      }}
+    <aside
+      className="sidenav navbar navbar-vertical navbar-expand-xs border-0 border-radius-xl my-3 fixed-start ms-4 ps bg-default "
+      id="sidenav-main"
     >
-      <CDBSidebar
-        textColor="#fff"
-        className="bg-dark"
-        backgroundColor={""}
-        breakpoint={0}
-        toggled={false}
-        minWidth={"100px"}
-        maxWidth={"250px"}
-      >
-        <CDBSidebarHeader prefix={<i className="fa fa-bars fa-large"></i>}>
-          <Link
-            to="/"
-            className="text-decoration-none styled-font"
-            style={{ color: "inherit" }}
-          >
+      <div className="sidenav-header">
+        <i
+          className="fas fa-times p-3 cursor-pointer text-secondary opacity-5 position-absolute end-0 top-0 d-none d-xl-none"
+          aria-hidden="true"
+          id="iconSidenav"
+        ></i>
+        <Link className="navbar-brand m-0" to="/" target="_blank">
+          <span className="ms-1 font-weight-bold styled-font h3">
             Sports Pulse
-          </Link>
-        </CDBSidebarHeader>
-
-        <CDBSidebarContent className="sidebar-content">
-          <CDBSidebarMenu>
-            <NavLink
+          </span>
+        </Link>
+      </div>
+      <hr className="horizontal dark mt-0" />
+      <div
+        className="collapse navbar-collapse  w-auto "
+        id="sidenav-collapse-main"
+      >
+        <ul className="navbar-nav">
+          <li className="nav-item">
+            <Link
+              className={`nav-link ${activeLink === "Dashboard" && "active"}`}
               to="/dashboard"
-              className={activeLink === "Dashboard" ? "activeClicked" : ""}
             >
-              <CDBSidebarMenuItem icon="columns">Dashboard</CDBSidebarMenuItem>
-            </NavLink>
-            <NavLink
+              <div className="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
+                <i className="ni ni-tv-2 text-primary text-sm opacity-10"></i>
+              </div>
+              <span className="nav-link-text ms-1">Dashboard</span>
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link
+              className={`nav-link ${activeLink === "Countries" && "active"}`}
               to="/countries"
-              className={activeLink === "Countries" ? "activeClicked" : ""}
             >
-              <CDBSidebarMenuItem icon="columns">Countries</CDBSidebarMenuItem>
-            </NavLink>
-            <NavLink
+              <div className="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
+                <i className="ni ni-calendar-grid-58 text-danger text-sm opacity-10"></i>
+              </div>
+              <span className="nav-link-text ms-1">Countries</span>
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link
+              className={`nav-link ${activeLink === "Sports" && "active"}`}
               to="/sports"
-              className={activeLink === "Sports" ? "activeClicked" : ""}
             >
-              <CDBSidebarMenuItem icon="columns">Sports</CDBSidebarMenuItem>
-            </NavLink>
-            <NavLink
+              <div className="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
+                <i className="ni ni-calendar-grid-58 text-danger text-sm opacity-10"></i>
+              </div>
+              <span className="nav-link-text ms-1">Sports</span>
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link
+              className={`nav-link ${activeLink === "Tournaments" && "active"}`}
               to="/tournaments"
-              className={activeLink === "Tournaments" ? "activeClicked" : ""}
             >
-              <CDBSidebarMenuItem icon="columns">
-                Tournaments
-              </CDBSidebarMenuItem>
-            </NavLink>
-            <NavLink
+              <div className="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
+                <i className="ni ni-calendar-grid-58 text-danger text-sm opacity-10"></i>
+              </div>
+              <span className="nav-link-text ms-1">Tournaments</span>
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link
+              className={`nav-link ${activeLink === "Teams" && "active"}`}
               to="/teams"
-              className={activeLink === "Teams" ? "activeClicked" : ""}
             >
-              <CDBSidebarMenuItem icon="columns">Teams</CDBSidebarMenuItem>
-            </NavLink>
-            <NavLink
+              <div className="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
+                <i className="ni ni-calendar-grid-58 text-danger text-sm opacity-10"></i>
+              </div>
+              <span className="nav-link-text ms-1">Teams</span>
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link
+              className={`nav-link ${activeLink === "Players" && "active"}`}
               to="/players"
-              className={activeLink === "Players" ? "activeClicked" : ""}
             >
-              <CDBSidebarMenuItem icon="columns">Players</CDBSidebarMenuItem>
-            </NavLink>
-            <NavLink
+              <div className="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
+                <i className="ni ni-calendar-grid-58 text-danger text-sm opacity-10"></i>
+              </div>
+              <span className="nav-link-text ms-1">Players</span>
+            </Link>
+          </li>
+          <li className="nav-item">
+            <Link
+              className={`nav-link ${activeLink === "Matches" && "active"}`}
               to="/matches"
-              className={activeLink === "Matches" ? "activeClicked" : ""}
             >
-              <CDBSidebarMenuItem icon="columns">Matches</CDBSidebarMenuItem>
-            </NavLink>
-          </CDBSidebarMenu>
-        </CDBSidebarContent>
-      </CDBSidebar>
-    </div>
+              <div className="icon icon-shape icon-sm border-radius-md text-center me-2 d-flex align-items-center justify-content-center">
+                <i className="ni ni-calendar-grid-58 text-danger text-sm opacity-10"></i>
+              </div>
+              <span className="nav-link-text ms-1">Matches</span>
+            </Link>
+          </li>
+        </ul>
+      </div>
+    </aside>
   );
 };
 

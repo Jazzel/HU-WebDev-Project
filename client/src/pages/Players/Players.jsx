@@ -10,13 +10,43 @@ const Players = () => {
   const [players, setPlayers] = useState([]);
 
   const getData = async () => {
-    const response = await axios.get(`/players`);
-    setPlayers(response.data);
+    try {
+      const response = await axios.get(`/players`);
+      setPlayers(response.data);
+    } catch (error) {
+      console.log(error);
+    }
   };
 
   useEffect(() => {
     getData();
   }, []);
+
+  const [filter, setFilter] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filteredData, setFilteredData] = useState([]);
+
+  const onChange = (e) => {
+    setSearch(e.target.value);
+    if (e.target.value !== "") {
+      setFilter(true);
+      const filteredData = players.filter(
+        (data) =>
+          data?.first_name
+            .toLowerCase()
+            .includes(e.target.value.toLowerCase()) ||
+          data?.last_name
+            .toLowerCase()
+            .includes(e.target.value.toLowerCase()) ||
+          data?.team.toLowerCase().includes(e.target.value.toLowerCase()) ||
+          data?.age === Number(e.target.value) ||
+          data?.city.toLowerCase().includes(e.target.value.toLowerCase())
+      );
+      setFilteredData(filteredData);
+    } else {
+      setFilter(false);
+    }
+  };
 
   const handleDelete = async (id) => {
     console.log(id);
@@ -42,10 +72,18 @@ const Players = () => {
         >
           <Link to="/players/add" className="btn btn-dark m-1">
             <FontAwesomeIcon icon={faAdd} style={{ marginRight: 5 }} />
-            Add more plauers
+            Add more players
           </Link>
         </div>
         <hr />
+      </div>
+      <div className="d-flex justify-content-end mx-2 mb-3">
+        <input
+          className="form-control w-50"
+          placeholder="Search"
+          value={search}
+          onChange={(e) => onChange(e)}
+        />
       </div>
       <table className="table  table-responsive table-striped dataTables">
         <thead className="table-dark ">
@@ -59,32 +97,71 @@ const Players = () => {
           </tr>
         </thead>
         <tbody>
-          {players.length > 0 &&
-            players.map((player, index) => (
-              <tr key={player._id}>
-                <td>{index + 1}</td>
-                <td>{player.first_name + " " + player.last_name}</td>
-                <td>{player.team.name}</td>
-                <td>{player.age}</td>
-                <td>{player.city.name}</td>
-                <td>
-                  <button className="btn btn-dark btn-sm">View</button> |{" "}
-                  <Link
-                    to={`/players/edit/${player._id}`}
-                    className="btn btn-warning btn-sm"
-                  >
-                    Edit
-                  </Link>{" "}
-                  |{" "}
-                  <button
-                    onClick={() => handleDelete(player._id)}
-                    className="btn btn-danger btn-sm"
-                  >
-                    Delete
-                  </button>
-                </td>
-              </tr>
-            ))}
+          {!filter
+            ? players.length > 0 &&
+              players.map((player, index) => (
+                <tr key={player.id}>
+                  <td>{index + 1}</td>
+                  <td>{player.first_name + " " + player.last_name}</td>
+                  <td>{player.team}</td>
+                  <td>{player.age}</td>
+                  <td>{player.city}</td>
+                  <td>
+                    <Link
+                      to={`/players/${player.id}/true`}
+                      className="btn btn-dark btn-sm"
+                    >
+                      View
+                    </Link>{" "}
+                    |{" "}
+                    <Link
+                      to={`/players/edit/${player.id}`}
+                      className="btn btn-warning btn-sm"
+                    >
+                      Edit
+                    </Link>{" "}
+                    |{" "}
+                    <button
+                      onClick={() => handleDelete(player.id)}
+                      className="btn btn-danger btn-sm"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))
+            : filteredData.length > 0 &&
+              filteredData.map((player, index) => (
+                <tr key={player.id}>
+                  <td>{index + 1}</td>
+                  <td>{player.first_name + " " + player.last_name}</td>
+                  <td>{player.team}</td>
+                  <td>{player.age}</td>
+                  <td>{player.city}</td>
+                  <td>
+                    <Link
+                      to={`/players/${player.id}/true`}
+                      className="btn btn-dark btn-sm"
+                    >
+                      View
+                    </Link>{" "}
+                    |{" "}
+                    <Link
+                      to={`/players/edit/${player.id}`}
+                      className="btn btn-warning btn-sm"
+                    >
+                      Edit
+                    </Link>{" "}
+                    |{" "}
+                    <button
+                      onClick={() => handleDelete(player.id)}
+                      className="btn btn-danger btn-sm"
+                    >
+                      Delete
+                    </button>
+                  </td>
+                </tr>
+              ))}
         </tbody>
       </table>
     </Layout>

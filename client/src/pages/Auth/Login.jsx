@@ -1,8 +1,16 @@
 import React, { useState } from "react";
-import axios from "../../axios";
 import { Link, useNavigate } from "react-router-dom";
 
-const Login = () => {
+import image from "../../assets/img/annie-spratt-jY9mXvA15W0-unsplash.jpg";
+
+import { login } from "../../actions/auth";
+import PropTypes from "prop-types";
+
+import { setAlert } from "../../actions/alert";
+import { connect } from "react-redux";
+import Alert from "../../components/Alert";
+
+const Login = ({ login, setAlert, isAuthenticated }) => {
   const [formData, setFormData] = useState({
     email: "",
     password: "",
@@ -13,23 +21,11 @@ const Login = () => {
   const onSubmit = async (e) => {
     e.preventDefault();
 
-    const response = await axios.post("/auth/", formData);
+    const response = await login(formData.email, formData.password);
 
+    console.log(response);
     if (response.status === 200) {
-      localStorage.setItem(
-        "user",
-        JSON.stringify({
-          name: response.data.name,
-          email: response.data.email,
-          role: response.data.role,
-          token: response.data.token,
-          isAuthenticated: true,
-        })
-      );
-
       navigate("/dashboard");
-    } else {
-      alert("Invalid credentials !");
     }
   };
 
@@ -38,7 +34,14 @@ const Login = () => {
 
   return (
     <div className="row" style={{ height: "100vh", overflow: "hidden" }}>
-      <div className="col-12 col-md-6 bg-dark"></div>
+      <div
+        className="col-12 col-md-6 "
+        style={{
+          background: `url(${image})`,
+          backgroundSize: "cover",
+          backgroundPosition: "center",
+        }}
+      ></div>
       <div
         className="col-12 col-md-6 d-flex justify-content-center align-items-center"
         style={{ flexDirection: "column" }}
@@ -48,6 +51,8 @@ const Login = () => {
         <h4>Login</h4>
 
         <form className="p-5 w-75" onSubmit={(e) => onSubmit(e)}>
+          <Alert />
+
           <div className="mb-3">
             <label className="form-label">Email</label>
             <input
@@ -83,17 +88,20 @@ const Login = () => {
           <button type="submit" className="btn btn-dark w-100">
             Login
           </button>
-          <center>
-            <small>
-              <Link className="text-dark" to="/forgot-password">
-                Forgot password? Click here.
-              </Link>
-            </small>
-          </center>
         </form>
       </div>
     </div>
   );
 };
 
-export default Login;
+Login.propTypes = {
+  login: PropTypes.func.isRequired,
+  setAlert: PropTypes.func.isRequired,
+  isAuthenticated: PropTypes.bool,
+};
+
+const mapStateToProps = (state) => ({
+  isAuthenticated: state.auth.isAuthenticated,
+});
+
+export default connect(mapStateToProps, { login, setAlert })(Login);

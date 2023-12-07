@@ -3,7 +3,10 @@ import Layout from "../../components/Layout";
 import { Link, useNavigate, useParams } from "react-router-dom";
 
 import { FontAwesomeIcon } from "@fortawesome/react-fontawesome";
-import { faChevronLeft } from "@fortawesome/free-solid-svg-icons";
+import {
+  faChevronLeft,
+  faChevronRight,
+} from "@fortawesome/free-solid-svg-icons";
 import axios from "../../axios";
 import { fixDataForInputField } from "../../App";
 
@@ -13,29 +16,6 @@ const MatchForm = () => {
   const [tournaments, setTournaments] = useState([]);
   const [teams, setTeams] = useState([]);
 
-  const getData = async () => {
-    const responseTournaments = await axios.get(`/tournaments/`);
-    const responseTeams = await axios.get(`/teams/`);
-    if (id) {
-      const response = await axios.get(`/matches/${id}`);
-      setFormData({
-        ...response.data,
-        tournament: response.data.tournament._id,
-        team_A: response.data.team_A._id,
-        team_B: response.data.team_B._id,
-        winner: response.data.winner && response.data.winner._id,
-      });
-    }
-    setTournaments(responseTournaments.data);
-    setTeams(responseTeams.data);
-  };
-
-  useEffect(() => {
-    getData();
-  }, []);
-
-  const navigate = useNavigate();
-
   const [formData, setFormData] = useState({
     name: "",
     timestamp: "",
@@ -43,20 +23,53 @@ const MatchForm = () => {
     tournament: "",
     team_A: "",
     team_B: "",
-    team_A_score: "",
-    team_B_score: "",
+    team_A_score: 0,
+    team_B_score: 0,
     winner: "",
     summary: "",
+    date: "",
   });
+
+  useEffect(() => {
+    const getData = async () => {
+      try {
+        const responseTournaments = await axios.get(`/tournaments/`);
+        const responseTeams = await axios.get(`/teams/`);
+        if (id) {
+          const response = await axios.get(`/matches/${id}`);
+          setFormData({
+            ...response.data,
+            tournament: response.data.tournament,
+            team_A: response.data.team_A,
+            team_B: response.data.team_B,
+            winner: response.data.winner,
+          });
+        }
+        setTournaments(responseTournaments.data);
+        setTeams(responseTeams.data);
+      } catch (error) {
+        console.log(error);
+      }
+    };
+
+    getData();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [id]);
+
+  const navigate = useNavigate();
 
   const onSubmit = async (e) => {
     e.preventDefault();
 
+    if (formData.team_A === formData.team_B) {
+      alert("Team A and Team B cannot be same !");
+      return;
+    }
     let response;
     if (!id) {
       response = await axios.post(`/matches`, formData);
     } else {
-      response = await axios.put(`/matches/${formData._id}`, formData);
+      response = await axios.put(`/matches/${formData.id}`, formData);
     }
     if (response.status === 200) {
       alert(id ? "Match updated !" : "Match added !");
@@ -66,17 +79,24 @@ const MatchForm = () => {
     }
   };
 
-  const onChange = (e) =>
+  const onChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   return (
     <Layout activeLink={"Matches"}>
       <div className="row">
-        <div className="col-9">
+        <div className="col-6">
           <h1>Matches | {!id ? "Add" : viewOnly ? "Details" : "Edit"}</h1>
         </div>
-        <div className="col-3 d-flex justify-content-end align-items-center">
-          <Link to="/matches" className="btn btn-outline-dark mr-0">
+        <div className="col-6 d-flex justify-content-end align-items-center">
+          <Link
+            to={`/matches/${id}/matchDetails`}
+            className="btn btn-outline-light mx-2"
+          >
+            <FontAwesomeIcon icon={faChevronRight} /> Go to Match Details
+          </Link>
+          <Link to="/matches" className="btn btn-outline-light mr-0">
             <FontAwesomeIcon icon={faChevronLeft} /> Go Back
           </Link>
         </div>
@@ -101,11 +121,11 @@ const MatchForm = () => {
           <input
             type="date"
             className="form-control"
-            id="timestamp"
-            name="timestamp"
+            id="date"
+            name="date"
             required
             onChange={(e) => onChange(e)}
-            value={fixDataForInputField(formData.timestamp)}
+            value={fixDataForInputField(formData.date)}
             placeholder="Enter date"
           />
         </div>
@@ -134,7 +154,11 @@ const MatchForm = () => {
           >
             <option value={""}>Select tournament</option>
             {tournaments.map((tournament) => (
-              <option key={tournament._id} value={tournament._id}>
+              <option
+                selected={formData.tournament === tournament.id}
+                key={tournament.id}
+                value={tournament.id}
+              >
                 {tournament.name}
               </option>
             ))}
@@ -152,7 +176,7 @@ const MatchForm = () => {
           >
             <option value={""}>Select team A</option>
             {teams.map((team) => (
-              <option key={team._id} value={team._id}>
+              <option key={team.id} value={team.id}>
                 {team.name}
               </option>
             ))}
@@ -166,11 +190,14 @@ const MatchForm = () => {
             name="team_B"
             required
             onChange={(e) => onChange(e)}
-            value={formData.team_B}
           >
             <option value={""}>Select team B</option>
             {teams.map((team) => (
-              <option key={team._id} value={team._id}>
+              <option
+                selected={formData.team_B === team.id}
+                key={team.id}
+                value={team.id}
+              >
                 {team.name}
               </option>
             ))}
@@ -211,7 +238,7 @@ const MatchForm = () => {
           >
             <option value={""}>Select winner team</option>
             {teams.map((team) => (
-              <option key={team._id} value={team._id}>
+              <option key={team.id} value={team.id}>
                 {team.name}
               </option>
             ))}
