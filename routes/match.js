@@ -1,60 +1,42 @@
 const express = require("express");
 const router = express.Router();
 const { check, validationResult } = require("express-validator");
-const Match = require("../models/Match");
-const Tournament = require("../models/Tournament");
-const Team = require("../models/Team");
+const sql = require("mssql");
+const connectDB = require("./../config/db");
 
-// @route    GET api/matches
-// @desc     Get all matches
+// @route    GET api/match
+// @desc     Get all match
 // @access   Public
-
 router.get("/", async (req, res) => {
   try {
-    const matches = await Match.find().sort({ timestamp: -1 });
+    // Ensure the database connection is established
+    await connectDB();
 
-    let matchesData = [];
-    for (const match of matches) {
-      const tournament = await Tournament.findById(match.tournament);
-      const teamA = await Team.findById(match.team_A);
-      const teamB = await Team.findById(match.team_B);
-      const winner = await Team.findById(match.winner);
-
-      matchesData.push({
-        _id: match._id,
-        name: match.name,
-        timestamp: match.timestamp,
-        venue: match.venue,
-        tournament: tournament.name,
-        team_A: { _id: teamA._id, name: teamA.name },
-        team_B: { _id: teamB._id, name: teamB.name },
-        team_A_score: match.team_A_score,
-        team_B_score: match.team_B_score,
-        winner: winner ? { _id: winner._id, name: winner.name } : null,
-        summary: match.summary,
-      });
-    }
-
-    return res.json(matchesData);
+    const result = await sql.query(
+      "SELECT M.id as id, M.name, M.date, M.venue, T.name as tournament, Te.name as winner FROM Matches AS M INNER JOIN Tournaments AS T ON M.tournament = T.id LEFT JOIN Teams AS Te ON M.winner = Te.id ORDER BY M.id DESC"
+    );
+    return res.json(result.recordset);
   } catch (err) {
     console.error(err.message);
     return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
   }
 });
 
-// @route    POST api/matches
-// @desc     Create an matches
+// @route    POST api/match
+// @desc     Create a match
 // @access   Private
-
 router.post(
   "/",
   [
     check("name", "Name is required").not().isEmpty(),
-    check("timestamp", "Timestamp is required").not().isEmpty(),
+    check("date", "Date is required").not().isEmpty(),
     check("venue", "Venue is required").not().isEmpty(),
     check("tournament", "Tournament is required").not().isEmpty(),
-    check("team_A", "Team A is required").not().isEmpty(),
-    check("team_B", "Team B is required").not().isEmpty(),
+    check("team_A", "Team_A is required").not().isEmpty(),
+    check("team_B", "Team_B is required").not().isEmpty(),
   ],
   async (req, res) => {
     const errors = validationResult(req);
@@ -63,116 +45,183 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
 
     try {
-      const newMatch = new Match({
+      // Ensure the database connection is established
+      await connectDB();
+
+      const jsDateString = new Date(req.body.date).toISOString().split("T")[0];
+      console.log(jsDateString);
+      const result = await sql.query(`
+        INSERT INTO Matches (name, date, venue, tournament, team_A, team_B, team_A_score, team_B_score, ${
+          req.body.winner && "winner,"
+        } summary) 
+        OUTPUT INSERTED.id
+        VALUES ('${req.body.name}', '${jsDateString}', '${req.body.venue}', '${
+        req.body.tournament
+      }', '${req.body.team_A}', '${req.body.team_B}', '${
+        req.body.team_A_score || 0
+      }', '${req.body.team_B_score || 0}', ${
+        req.body.winner && `${req.body.winner},`
+      } '${req.body.summary}')
+      `);
+
+      // Check if recordset is undefined or empty
+      if (!result.recordset || result.recordset.length === 0) {
+        return res.status(500).send("Failed to retrieve the inserted record");
+      }
+
+      const insertedId = result.recordset[0].id;
+
+      return res.json({
+        id: insertedId,
         name: req.body.name,
-        timestamp: req.body.timestamp,
-        time: req.body.time,
+        date: req.body.date,
         venue: req.body.venue,
         tournament: req.body.tournament,
         team_A: req.body.team_A,
         team_B: req.body.team_B,
         team_A_score: req.body.team_A_score,
         team_B_score: req.body.team_B_score,
-        winner: req.body.winner !== "" ? req.body.winner : null,
+        winner: req.body.winner,
         summary: req.body.summary,
       });
-
-      const match = await newMatch.save();
-
-      return res.json(match);
     } catch (err) {
       console.error(err.message);
       return res.status(500).send("Server Error");
+    } finally {
+      // Close the database connection
+      sql.close();
     }
   }
 );
 
-// @route    GET api/matches/:id
+// @route    GET api/match/:id
 // @desc     Get match by ID
 // @access   Public
-
 router.get("/:id", async (req, res) => {
   try {
-    const match = await Match.findById(req.params.id);
+    // Ensure the database connection is established
+    await connectDB();
+
+    // Ensure the database connection is established
+    const result = await sql.query(
+      `SELECT M.id as id, M.name, M.date, M.venue, T.id as tournament, M.team_A, M.team_B, M.team_A_score, M.team_B_score, M.summary, Te.id as winner FROM Matches AS M INNER JOIN Tournaments AS T ON M.tournament = T.id LEFT JOIN Teams AS Te ON M.winner = Te.id WHERE M.id = ${req.params.id}`
+    );
+
+    const match = result.recordset[0];
 
     if (!match) return res.status(404).json({ msg: "Match not found" });
-    const tournament = await Tournament.findById(match.tournament);
-    const teamA = await Team.findById(match.team_A);
-    const teamB = await Team.findById(match.team_B);
-    const winner = await Team.findById(match.winner);
-
-    let matchData = {
-      _id: match._id,
-      name: match.name,
-      timestamp: match.timestamp,
-      venue: match.venue,
-      tournament: { _id: tournament._id, name: tournament.name },
-      team_A: { _id: teamA._id, name: teamA.name },
-      team_B: { _id: teamB._id, name: teamB.name },
-      team_A_score: match.team_A_score,
-      team_B_score: match.team_B_score,
-      winner: winner ? { _id: winner._id, name: winner.name } : null,
-      summary: match.summary,
-    };
-    return res.json(matchData);
-  } catch (err) {
-    console.error(err.message);
-
-    if (err.kind === "ObjectId")
-      res.status(404).json({ msg: "Match not found" });
-
-    return res.status(500).send("Server Error");
-  }
-});
-
-// @route    DELETE api/matches/:id
-// @desc     Delete match
-// @access   Private
-
-router.delete("/:id", async (req, res) => {
-  try {
-    const match = await Match.findById(req.params.id);
-
-    if (!match) return res.status(404).json({ msg: "Match not found" });
-
-    await match.deleteOne();
-    return res.json({ msg: "Match removed" });
-  } catch (err) {
-    console.error(err.message);
-    if (err.kind === "ObjectId")
-      return res.status(404).json({ msg: "Match not found" });
-
-    return res.status(500).send("Server Error");
-  }
-});
-
-// @route    PUT api/matches
-// @desc     Create an matches
-// @access   Private
-
-router.put("/:id", async (req, res) => {
-  try {
-    const match = await Match.findById(req.params.id);
-
-    if (!match) return res.status(404).json({ msg: "Match not found" });
-
-    match.name = req.body.name ?? match.name;
-    match.timestamp = req.body.timestamp ?? match.timestamp;
-    match.venue = req.body.venue ?? match.venue;
-    match.tournament = req.body.tournament ?? match.tournament;
-    match.team_A = req.body.team_A ?? match.team_A;
-    match.team_B = req.body.team_B ?? match.team_B;
-    match.team_A_score = req.body.team_A_score ?? match.team_A_score;
-    match.team_B_score = req.body.team_B_score ?? match.team_B_score;
-    match.winner = req.body.winner ?? match.winner;
-    match.summary = req.body.summary ?? match.summary;
-
-    await match.save();
 
     return res.json(match);
   } catch (err) {
     console.error(err.message);
+
     return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
+  }
+});
+
+// @route    GET api/match/:id
+// @desc     Get match by ID
+// @access   Public
+router.get("/:id/special", async (req, res) => {
+  try {
+    // Ensure the database connection is established
+    await connectDB();
+
+    // Ensure the database connection is established
+    const result = await sql.query(
+      `SELECT M.id as id, M.name, M.date, M.venue, T.name as tournament, M.team_A as team_A_id, M.team_B as team_B_id, T1.name as team_A, T2.name as team_B, M.team_A_score, M.team_B_score, M.summary, Te.name as winner FROM Matches AS M INNER JOIN Tournaments AS T ON M.tournament = T.id INNER JOIN Teams AS T1 ON M.team_A = T1.id INNER JOIN Teams AS T2 ON M.team_B = T2.id LEFT JOIN Teams AS Te ON M.winner = Te.id WHERE M.id = ${req.params.id}`
+    );
+
+    const match = result.recordset[0];
+
+    if (!match) return res.status(404).json({ msg: "Match not found" });
+
+    return res.json(match);
+  } catch (err) {
+    console.error(err.message);
+
+    return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
+  }
+});
+
+// @route    DELETE api/match/:id
+// @desc     Delete match
+// @access   Private
+router.delete("/:id", async (req, res) => {
+  try {
+    // Ensure the database connection is established
+    await connectDB();
+
+    const result = await sql.query(
+      `DELETE FROM Matches WHERE id = ${req.params.id}`
+    );
+
+    if (result.rowsAffected[0] === 0)
+      return res.status(404).json({ msg: "Match not found" });
+
+    return res.json({ msg: "Match removed" });
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
+  }
+});
+
+// @route    PUT api/match/:id
+// @desc     Update a match
+// @access   Private
+router.put("/:id", async (req, res) => {
+  try {
+    // Ensure the database connection is established
+    await connectDB();
+
+    const result = await sql.query(
+      `UPDATE Matches SET 
+        name = '${req.body.name}',
+        date = '${req.body.date}',
+        venue = '${req.body.venue}',
+        tournament = '${req.body.tournament}',
+        team_A = '${req.body.team_A}',
+        team_B = '${req.body.team_B}',
+        team_A_score = '${req.body.team_A_score}',
+        team_B_score = '${req.body.team_B_score}',
+        winner = '${req.body.winner}',
+        summary = '${req.body.summary}'
+       WHERE id = ${req.params.id}`
+    );
+
+    if (result.rowsAffected[0] === 0)
+      return res.status(404).json({ msg: "Match not found" });
+
+    const updatedmatch = {
+      id: req.params.id,
+      name: req.body.name,
+      date: req.body.date,
+      venue: req.body.venue,
+      tournament: req.body.tournament,
+      team_A: req.body.team_A,
+      team_B: req.body.team_B,
+      team_A_score: req.body.team_A_score,
+      team_B_score: req.body.team_B_score,
+      winner: req.body.winner,
+      summary: req.body.summary,
+    };
+
+    return res.json(updatedmatch);
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
   }
 });
 

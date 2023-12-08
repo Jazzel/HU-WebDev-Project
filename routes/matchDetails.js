@@ -4,15 +4,15 @@ const { check, validationResult } = require("express-validator");
 const connectDB = require("./../config/db");
 const sql = require("mssql");
 
-// @route    GET api/country
-// @desc     Get all country
+// @route    GET api/matchDetail
+// @desc     Get all matchDetail
 // @access   Public
 router.get("/", async (req, res) => {
   try {
     // Ensure the database connection is established
     await connectDB();
 
-    const result = await sql.query("SELECT * FROM Countries  ORDER BY id DESC");
+    const result = await sql.query("SELECT * FROM Match_Details");
     return res.json(result.recordset);
   } catch (err) {
     console.error(err.message);
@@ -23,12 +23,17 @@ router.get("/", async (req, res) => {
   }
 });
 
-// @route    POST api/country
-// @desc     Create a country
+// @route    POST api/matchDetail
+// @desc     Create a matchDetail
 // @access   Private
 router.post(
   "/",
-  [check("name", "Name is required").not().isEmpty()],
+  [
+    check("match", "Match is required").not().isEmpty(),
+    check("player", "Player is required").not().isEmpty(),
+    check("score", "Score is required").not().isEmpty(),
+    check("description", "Description is required").not().isEmpty(),
+  ],
   async (req, res) => {
     const errors = validationResult(req);
 
@@ -40,9 +45,9 @@ router.post(
       await connectDB();
 
       const result = await sql.query(`
-        INSERT INTO Countries (name) 
+        INSERT INTO Match_Details (match, player, score, description) 
         OUTPUT INSERTED.id
-        VALUES ('${req.body.name}')
+        VALUES ('${req.body.match}', '${req.body.player}', '${req.body.score}', '${req.body.description}')
       `);
 
       // Check if recordset is undefined or empty
@@ -54,7 +59,10 @@ router.post(
 
       return res.json({
         id: insertedId,
-        name: req.body.name,
+        match: req.body.match,
+        player: req.body.player,
+        score: req.body.score,
+        description: req.body.description,
       });
     } catch (err) {
       console.error(err.message);
@@ -66,24 +74,27 @@ router.post(
   }
 );
 
-// @route    GET api/country/:id
-// @desc     Get country by ID
+// @route    GET api/matchDetail/:id
+// @desc     Get matchDetail by ID
 // @access   Public
-router.get("/:id", async (req, res) => {
+router.get("/:id/:player_id", async (req, res) => {
   try {
     // Ensure the database connection is established
     await connectDB();
 
     // Ensure the database connection is established
     const result = await sql.query(
-      `SELECT * FROM Countries WHERE id = ${req.params.id}`
+      `SELECT * FROM Match_Details WHERE match = '${req.params.id}' AND player = '${req.params.player_id}'`
     );
 
-    const country = result.recordset[0];
+    console.log(req.params);
 
-    if (!country) return res.status(404).json({ msg: "Country not found" });
+    const matchDetail = result.recordset[0];
 
-    return res.json(country);
+    if (!matchDetail)
+      return res.status(404).json({ msg: "MatchDetail not found" });
+
+    return res.json(matchDetail);
   } catch (err) {
     console.error(err.message);
 
@@ -94,8 +105,8 @@ router.get("/:id", async (req, res) => {
   }
 });
 
-// @route    DELETE api/country/:id
-// @desc     Delete country
+// @route    DELETE api/matchDetail/:id
+// @desc     Delete matchDetail
 // @access   Private
 router.delete("/:id", async (req, res) => {
   try {
@@ -103,13 +114,13 @@ router.delete("/:id", async (req, res) => {
     await connectDB();
 
     const result = await sql.query(
-      `DELETE FROM Countries WHERE id = ${req.params.id}`
+      `DELETE FROM Match_Details WHERE id = ${req.params.id}`
     );
 
     if (result.rowsAffected[0] === 0)
-      return res.status(404).json({ msg: "Country not found" });
+      return res.status(404).json({ msg: "MatchDetail not found" });
 
-    return res.json({ msg: "Country removed" });
+    return res.json({ msg: "MatchDetail removed" });
   } catch (err) {
     console.error(err.message);
     return res.status(500).send("Server Error");
@@ -119,27 +130,35 @@ router.delete("/:id", async (req, res) => {
   }
 });
 
-// @route    PUT api/country/:id
-// @desc     Update a country
+// @route    PUT api/matchDetail/:id
+// @desc     Update a matchDetail
 // @access   Private
-router.put("/:id", async (req, res) => {
+router.put("/:id/:player_id", async (req, res) => {
   try {
     // Ensure the database connection is established
     await connectDB();
 
     const result = await sql.query(
-      `UPDATE Countries SET name = '${req.body.name}' WHERE id = ${req.params.id}`
+      `UPDATE Match_Details SET 
+        match = '${req.body.match}',
+        player = '${req.body.player}',
+        score = '${req.body.score}',
+        description = '${req.body.description}'
+       WHERE match = ${req.params.id} AND player = ${req.params.player_id}`
     );
 
     if (result.rowsAffected[0] === 0)
-      return res.status(404).json({ msg: "Country not found" });
+      return res.status(404).json({ msg: "MatchDetail not found" });
 
-    const updatedcountry = {
+    const updatedMatchDetail = {
       id: req.params.id,
-      name: req.body.name,
+      match: req.body.match,
+      player: req.body.player,
+      score: req.body.score,
+      description: req.body.description,
     };
 
-    return res.json(updatedcountry);
+    return res.json(updatedMatchDetail);
   } catch (err) {
     console.error(err.message);
     return res.status(500).send("Server Error");

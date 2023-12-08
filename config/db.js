@@ -1,12 +1,19 @@
-const mongoose = require("mongoose");
+const sql = require("mssql");
 const config = require("config");
 
-const db = config.get("mongoURI");
-
+const dbConfig = {
+  user: config.get("sqlServer.user"),
+  password: config.get("sqlServer.password"),
+  server: config.get("sqlServer.server"),
+  database: config.get("sqlServer.database"),
+  options: {
+    encrypt: false, // For security reasons, set to true if using Azure
+  },
+};
 const connectDB = async () => {
   try {
-    await mongoose.connect(db);
-    console.log("MongoDB Connected ...");
+    await sql.connect(dbConfig);
+    // console.log("SQL Server Connected ...");
   } catch (error) {
     console.error(error.message);
     process.exit(1);

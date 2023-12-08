@@ -1,45 +1,33 @@
 const express = require("express");
 const router = express.Router();
 const { check, validationResult } = require("express-validator");
-const Team = require("../models/Team");
-const Country = require("../models/Country");
+const connectDB = require("./../config/db");
+const sql = require("mssql");
 
-// @route    GET api/teams
-// @desc     Get all teams
+// @route    GET api/team
+// @desc     Get all team
 // @access   Public
-
 router.get("/", async (req, res) => {
   try {
-    const teams = await Team.find().sort({ date: -1 });
+    // Ensure the database connection is established
+    await connectDB();
 
-    let teamsData = [];
-    for (const team of teams) {
-      const country = await Country.findById(team.country);
-
-      teamsData.push({
-        _id: team._id,
-        name: team.name,
-        coach: team.coach,
-        country: {
-          name: country.name,
-          _id: country._id,
-        },
-        state: team.state,
-        description: team.description,
-      });
-    }
-
-    return res.json(teamsData);
+    const result = await sql.query(
+      "SELECT T.id, T.name, T.coach, T.state, C.name as country FROM Teams AS T INNER JOIN Countries AS C ON T.country = C.id  ORDER BY T.id DESC"
+    );
+    return res.json(result.recordset);
   } catch (err) {
     console.error(err.message);
     return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
   }
 });
 
-// @route    POST api/teams
-// @desc     Create an teams
+// @route    POST api/team
+// @desc     Create a team
 // @access   Private
-
 router.post(
   "/",
   [
@@ -56,99 +44,147 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
 
     try {
-      const newTeam = new Team({
+      // Ensure the database connection is established
+      await connectDB();
+
+      const result = await sql.query(`
+        INSERT INTO Teams (name, coach, country, state, description) 
+        OUTPUT INSERTED.id
+        VALUES ('${req.body.name}', '${req.body.coach}', '${req.body.country}', '${req.body.state}', '${req.body.description}')
+      `);
+
+      // Check if recordset is undefined or empty
+      if (!result.recordset || result.recordset.length === 0) {
+        return res.status(500).send("Failed to retrieve the inserted record");
+      }
+
+      const insertedId = result.recordset[0].id;
+
+      return res.json({
+        id: insertedId,
         name: req.body.name,
         coach: req.body.coach,
         country: req.body.country,
         state: req.body.state,
         description: req.body.description,
       });
-
-      const team = await newTeam.save();
-
-      return res.json(team);
     } catch (err) {
       console.error(err.message);
       return res.status(500).send("Server Error");
+    } finally {
+      // Close the database connection
+      sql.close();
     }
   }
 );
 
-// @route    GET api/teams/:id
+// @route    GET api/team/:id
 // @desc     Get team by ID
 // @access   Public
-
 router.get("/:id", async (req, res) => {
   try {
-    const team = await Team.findById(req.params.id);
+    // Ensure the database connection is established
+    await connectDB();
+
+    // Ensure the database connection is established
+    const result = await sql.query(
+      `SELECT T.id as id, T.name, T.coach, T.state, C.id as country, T.description FROM Teams AS T INNER JOIN Countries AS C ON T.country = C.id WHERE T.id = ${req.params.id}`
+    );
+
+    const team = result.recordset[0];
 
     if (!team) return res.status(404).json({ msg: "Team not found" });
-    const country = await Country.findById(team.country);
-    let teamData = {
-      _id: team._id,
-      name: team.name,
-      coach: team.coach,
-      country: {
-        name: country.name,
-        _id: country._id,
-      },
-      state: team.state,
-      description: team.description,
-    };
-
-    return res.json(teamData);
-  } catch (err) {
-    console.error(err.message);
-    if (err.kind === "ObjectId")
-      return res.status(404).json({ msg: "Team not found" });
-    return res.status(500).send("Server Error");
-  }
-});
-
-// @route    DELETE api/teams/:id
-// @desc     Delete team
-// @access   Private
-
-router.delete("/:id", async (req, res) => {
-  try {
-    const team = await Team.findById(req.params.id);
-
-    if (!team) return res.status(404).json({ msg: "Team not found" });
-
-    await team.deleteOne();
-
-    return res.json({ msg: "Team removed" });
-  } catch (err) {
-    console.error(err.message);
-    if (err.kind === "ObjectId")
-      return res.status(404).json({ msg: "Team not found" });
-
-    return res.status(500).send("Server Error");
-  }
-});
-
-// @route    PUT api/teams/:id
-// @desc     Update a team
-// @access   Private
-
-router.put("/:id", async (req, res) => {
-  try {
-    const team = await Team.findById(req.params.id);
-
-    if (!team) return res.status(404).json({ msg: "Team not found" });
-
-    team.name = req.body.name ?? team.name;
-    team.coach = req.body.coach ?? team.coach;
-    team.country = req.body.country ?? team.country;
-    team.state = req.body.state ?? team.state;
-    team.description = req.body.description ?? team.description;
-
-    await team.save();
 
     return res.json(team);
   } catch (err) {
     console.error(err.message);
+
     return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
+  }
+});
+
+// @route    DELETE api/team/:id
+// @desc     Delete team
+// @access   Private
+router.delete("/:id", async (req, res) => {
+  try {
+    // Ensure the database connection is established
+    await connectDB();
+
+    const result = await sql.query(
+      `DELETE FROM Teams WHERE id = ${req.params.id}`
+    );
+
+    if (result.rowsAffected[0] === 0)
+      return res.status(404).json({ msg: "Team not found" });
+
+    return res.json({ msg: "Team removed" });
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
+  }
+});
+
+// @route    PUT api/team/:id
+// @desc     Update a team
+// @access   Private
+router.put("/:id", async (req, res) => {
+  try {
+    // Ensure the database connection is established
+    await connectDB();
+
+    console.log("dsad", req.params.id);
+
+    const result = await sql.query(
+      `UPDATE Teams SET name = '${req.body.name}', coach = '${req.body.coach}', country = '${req.body.country}', state = '${req.body.state}', description = '${req.body.description}' WHERE id = ${req.params.id}`
+    );
+
+    if (result.rowsAffected[0] === 0)
+      return res.status(404).json({ msg: "Team not found" });
+
+    const updatedteam = {
+      id: req.params.id,
+      name: req.body.name,
+      coach: req.body.coach,
+      country: req.body.country,
+      state: req.body.state,
+      description: req.body.description,
+    };
+
+    return res.json(updatedteam);
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
+  }
+});
+
+// @route    GET api/team/:id/players
+// @desc     Get all team players
+// @access   Public
+router.get("/:id/players", async (req, res) => {
+  try {
+    // Ensure the database connection is established
+    await connectDB();
+
+    const result = await sql.query(
+      `SELECT P.id, P.first_name, P.last_name, T.name as team_name, T.id as team_id FROM Players AS P INNER JOIN Teams AS T ON P.team = T.id WHERE T.id = ${req.params.id}`
+    );
+    return res.json(result.recordset);
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
   }
 });
 

@@ -1,56 +1,38 @@
 const express = require("express");
 const router = express.Router();
 const { check, validationResult } = require("express-validator");
-const Player = require("../models/Player");
-const Team = require("../models/Team");
-const City = require("../models/City");
+const sql = require("mssql");
+const connectDB = require("./../config/db");
 
-// @route    GET api/Player
-// @desc     Get all Player
+// @route    GET api/player
+// @desc     Get all player
 // @access   Public
-
 router.get("/", async (req, res) => {
   try {
-    const players = await Player.find().sort({ date: -1 });
+    // Ensure the database connection is established
+    await connectDB();
 
-    let playersData = [];
-    for (const player of players) {
-      const team = await Team.findById(player.team);
-      const city = await City.findById(player.city);
-
-      playersData.push({
-        _id: player._id,
-        first_name: player.first_name,
-        last_name: player.last_name,
-        team: {
-          _id: team._id,
-          name: team.name,
-        },
-        age: player.age,
-        city: {
-          _id: city._id,
-          name: city.name,
-        },
-        description: player.description,
-      });
-    }
-
-    return res.json(playersData);
+    const result = await sql.query(
+      "SELECT P.id, P.first_name, P.last_name, T.name as team, P.age, C.name as city FROM Players AS P INNER JOIN Teams AS T ON P.team = T.id INNER JOIN Cities as C ON P.city = C.id ORDER BY P.id DESC"
+    );
+    return res.json(result.recordset);
   } catch (err) {
     console.error(err.message);
     return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
   }
 });
 
-// @route    POST api/Player
-// @desc     Create an Player
+// @route    POST api/player
+// @desc     Create a player
 // @access   Private
-
 router.post(
   "/",
   [
-    check("first_name", "First Name is required").not().isEmpty(),
-    check("last_name", "Last Name is required").not().isEmpty(),
+    check("first_name", "First name is required").not().isEmpty(),
+    check("last_name", "Last name is required").not().isEmpty(),
     check("team", "Team is required").not().isEmpty(),
     check("age", "Age is required").not().isEmpty(),
     check("city", "City is required").not().isEmpty(),
@@ -63,7 +45,24 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
 
     try {
-      const newPlayer = new Player({
+      // Ensure the database connection is established
+      await connectDB();
+
+      const result = await sql.query(`
+        INSERT INTO Players (first_name, last_name, team, age, city, description) 
+        OUTPUT INSERTED.id
+        VALUES ('${req.body.first_name}', '${req.body.last_name}', '${req.body.team}', '${req.body.age}', '${req.body.city}', '${req.body.description}')
+      `);
+
+      // Check if recordset is undefined or empty
+      if (!result.recordset || result.recordset.length === 0) {
+        return res.status(500).send("Failed to retrieve the inserted record");
+      }
+
+      const insertedId = result.recordset[0].id;
+
+      return res.json({
+        id: insertedId,
         first_name: req.body.first_name,
         last_name: req.body.last_name,
         team: req.body.team,
@@ -71,99 +70,108 @@ router.post(
         city: req.body.city,
         description: req.body.description,
       });
-
-      const player = await newPlayer.save();
-
-      return res.json(player);
     } catch (err) {
       console.error(err.message);
       return res.status(500).send("Server Error");
+    } finally {
+      // Close the database connection
+      sql.close();
     }
   }
 );
 
-// @route    GET api/Player/:id
-// @desc     Get Player by ID
+// @route    GET api/player/:id
+// @desc     Get player by ID
 // @access   Public
-
 router.get("/:id", async (req, res) => {
   try {
-    const player = await Player.findById(req.params.id);
+    // Ensure the database connection is established
+    await connectDB();
+
+    // Ensure the database connection is established
+    const result = await sql.query(
+      `SELECT P.id, P.first_name, P.last_name, T.id as team, T.name as team_name, P.age, C.id as city, P.description FROM Players AS P INNER JOIN Teams AS T ON P.team = T.id INNER JOIN Cities as C ON P.city = C.id WHERE P.id = ${req.params.id}`
+    );
+
+    const player = result.recordset[0]; //the query returns data
 
     if (!player) return res.status(404).json({ msg: "Player not found" });
-    const team = await Team.findById(player.team);
-    const city = await City.findById(player.city);
-
-    let playerData = {
-      _id: player._id,
-      first_name: player.first_name,
-      last_name: player.last_name,
-      team: {
-        _id: team._id,
-        name: team.name,
-      },
-      age: player.age,
-      city: {
-        _id: city._id,
-        name: city.name,
-      },
-      description: player.description,
-    };
-
-    return res.json(playerData);
-  } catch (err) {
-    console.error(err.message);
-
-    if (err.kind === "ObjectId")
-      return res.status(404).json({ msg: "Player not found" });
-
-    return res.status(500).send("Server Error");
-  }
-});
-
-// @route    DELETE api/Player/:id
-// @desc     Delete Player
-// @access   Private
-
-router.delete("/:id", async (req, res) => {
-  try {
-    const player = await Player.findById(req.params.id);
-
-    if (!player) return res.status(404).json({ msg: "Player not found" });
-
-    await player.deleteOne();
-    return res.json({ msg: "Player removed" });
-  } catch (err) {
-    console.error(err.message);
-    if (err.kind === "ObjectId")
-      return res.status(404).json({ msg: "Player not found" });
-    return res.status(500).send("Server Error");
-  }
-});
-
-// @route    PUT api/Player
-// @desc     Create an Player
-// @access   Private
-
-router.put("/:id", async (req, res) => {
-  try {
-    const player = await Player.findById(req.params.id);
-
-    if (!player) return res.status(404).json({ msg: "Player not found" });
-
-    player.first_name = req.body.first_name ?? player.first_name;
-    player.last_name = req.body.last_name ?? player.last_name;
-    player.team = req.body.team ?? player.team;
-    player.age = req.body.age ?? player.age;
-    player.city = req.body.city ?? player.city;
-    player.description = req.body.description ?? player.description;
-
-    await player.save();
 
     return res.json(player);
   } catch (err) {
     console.error(err.message);
+
     return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
+  }
+});
+
+// @route    DELETE api/player/:id
+// @desc     Delete player
+// @access   Private
+router.delete("/:id", async (req, res) => {
+  try {
+    // Ensure the database connection is established
+    await connectDB();
+
+    const result = await sql.query(
+      `DELETE FROM Players WHERE id = ${req.params.id}`
+    );
+
+    if (result.rowsAffected[0] === 0)
+      return res.status(404).json({ msg: "Player not found" });
+
+    return res.json({ msg: "Player removed" });
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
+  }
+});
+
+// @route    PUT api/player/:id
+// @desc     Update a player
+// @access   Private
+router.put("/:id", async (req, res) => {
+  try {
+    // Ensure the database connection is established
+    await connectDB();
+
+    const result = await sql.query(
+      `UPDATE Players SET 
+        first_name = '${req.body.first_name}',
+        last_name = '${req.body.last_name}',
+        team = '${req.body.team}',
+        age = '${req.body.age}',
+        city = '${req.body.city}',
+        description = '${req.body.description}'
+       WHERE id = ${req.params.id}`
+    );
+
+    if (result.rowsAffected[0] === 0)
+      return res.status(404).json({ msg: "Player not found" });
+
+    const updatedplayer = {
+      id: req.params.id,
+      first_name: req.body.first_name,
+      last_name: req.body.last_name,
+      team: req.body.team,
+      age: req.body.age,
+      city: req.body.city,
+      description: req.body.description,
+    };
+
+    return res.json(updatedplayer);
+  } catch (err) {
+    console.error(err.message);
+    return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
   }
 });
 

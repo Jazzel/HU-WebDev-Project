@@ -1,39 +1,33 @@
 const express = require("express");
 const router = express.Router();
 const { check, validationResult } = require("express-validator");
-const City = require("../models/City");
-const Country = require("../models/Country");
+const connectDB = require("./../config/db");
+const sql = require("mssql");
 
-// @route    GET api/City
-// @desc     Get all City
+// @route    GET api/city
+// @desc     Get all city
 // @access   Public
 router.get("/", async (req, res) => {
   try {
-    const cities = await City.find().sort({ date: -1 });
+    // Ensure the database connection is established
+    await connectDB();
 
-    let citiesData = [];
-    for (const city of cities) {
-      const country = await Country.findById(city.country);
+    const result = await sql.query(
+      "SELECT Ci.id, Ci.name, Co.name as country FROM Cities AS Ci INNER JOIN Countries AS Co ON Ci.country = Co.id ORDER BY Ci.id DESC"
+    );
 
-      citiesData.push({
-        _id: city._id,
-        name: city.name,
-        country: {
-          _id: country._id,
-          name: country.name,
-        },
-      });
-    }
-
-    return res.json(citiesData);
+    return res.json(result.recordset);
   } catch (err) {
     console.error(err.message);
     return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
   }
 });
 
-// @route    POST api/City
-// @desc     Create an City
+// @route    POST api/city
+// @desc     Create a city
 // @access   Private
 router.post(
   "/",
@@ -48,89 +42,118 @@ router.post(
       return res.status(400).json({ errors: errors.array() });
 
     try {
-      const newCity = new City({
+      // Ensure the database connection is established
+      await connectDB();
+
+      const result = await sql.query(`
+        INSERT INTO Cities (name, country) 
+        OUTPUT INSERTED.id
+        VALUES ('${req.body.name}', '${req.body.country}')
+      `);
+
+      // Check if recordset is undefined or empty
+      if (!result.recordset || result.recordset.length === 0) {
+        return res.status(500).send("Failed to retrieve the inserted record");
+      }
+
+      const insertedId = result.recordset[0].id;
+
+      return res.json({
+        id: insertedId,
         name: req.body.name,
         country: req.body.country,
       });
-
-      const city = await newCity.save();
-
-      return res.json(city);
     } catch (err) {
       console.error(err.message);
       return res.status(500).send("Server Error");
+    } finally {
+      // Close the database connection
+      sql.close();
     }
   }
 );
 
 // @route    GET api/city/:id
-// @desc     Get sport by ID
+// @desc     Get city by ID
 // @access   Public
 router.get("/:id", async (req, res) => {
   try {
-    const city = await City.findById(req.params.id);
+    // Ensure the database connection is established
+    await connectDB();
+
+    // Ensure the database connection is established
+    const result = await sql.query(
+      `SELECT Ci.id, Ci.name, Co.id as country FROM Cities AS Ci INNER JOIN Countries AS Co ON Ci.country = Co.id WHERE Ci.id = ${req.params.id}`
+    );
+
+    const city = result.recordset[0];
 
     if (!city) return res.status(404).json({ msg: "City not found" });
 
-    const country = await Country.findById(city.country);
-
-    let cityData = {
-      _id: city._id,
-      name: city.name,
-      country: {
-        _id: country._id,
-        name: country.name,
-      },
-    };
-
-    return res.json(cityData);
+    return res.json(city);
   } catch (err) {
     console.error(err.message);
-    if (err.kind === "ObjectId")
-      return res.status(404).json({ msg: "City not found" });
+
     return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
   }
 });
 
 // @route    DELETE api/city/:id
-// @desc     Delete a city
+// @desc     Delete city
 // @access   Private
 router.delete("/:id", async (req, res) => {
   try {
-    const city = await City.findById(req.params.id);
+    // Ensure the database connection is established
+    await connectDB();
 
-    if (!city) return res.status(404).json({ msg: "City not found" });
+    const result = await sql.query(
+      `DELETE FROM Cities WHERE id = ${req.params.id}`
+    );
 
-    await city.deleteOne();
+    if (result.rowsAffected[0] === 0)
+      return res.status(404).json({ msg: "City not found" });
+
     return res.json({ msg: "City removed" });
   } catch (err) {
     console.error(err.message);
-
-    if (err.kind === "ObjectId")
-      return res.status(404).json({ msg: "City not found" });
     return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
   }
 });
 
 // @route    PUT api/city/:id
 // @desc     Update a city
 // @access   Private
-
 router.put("/:id", async (req, res) => {
   try {
-    const city = await City.findById(req.params.id);
+    // Ensure the database connection is established
+    await connectDB();
 
-    if (!city) return res.status(404).json({ msg: "City not found" });
+    const result = await sql.query(
+      `UPDATE Cities SET name = '${req.body.name}', country = '${req.body.country}' WHERE id = ${req.params.id}`
+    );
 
-    city.name = req.body.name ?? city.name;
-    city.country = req.body.country ?? city.country;
+    if (result.rowsAffected[0] === 0)
+      return res.status(404).json({ msg: "City   not found" });
 
-    await city.save();
+    const updatedcity = {
+      id: req.params.id,
+      name: req.body.name,
+      country: req.body.country,
+    };
 
-    return res.json(city);
+    return res.json(updatedcity);
   } catch (err) {
     console.error(err.message);
     return res.status(500).send("Server Error");
+  } finally {
+    // Close the database connection
+    sql.close();
   }
 });
 
